@@ -1,8 +1,7 @@
 from libc.math cimport exp
+
 cdef double f_bin(double a):
 	return 1 / (1 + exp(-a))
-cdef double coef(double n, double a):
-	return n * a / 100
 
 from libc.stdlib cimport calloc, free
 
@@ -30,32 +29,23 @@ cdef class neuronweb:
 			for j in range(self.layers[i + 1]):
 				self.coefs[i][j] = <double*> calloc(self.layers[i] + 1, sizeof(double))
 
-	def read_coefs(self):
-		cdef double nm
+	def read_coefs(self,  suf = ""):
 		for l in range(self.n_layers):
-			name = "Data/layer" + str(l + 1) +".coefs"
+			name = "Data/layer" + str(l + 1) +".coefs" + suf
 			if os.path.isfile(name): 
 				f = open(name, "r")
-				nm = Decimal(f.readline())
 				for n in range(self.layers[l+1]):
 					for c in range(self.layers[l]+1):    
-						self.coefs[l][n][c] = coef(nm, Decimal(f.readline()))
+						self.coefs[l][n][c] = Decimal(f.readline())
 				f.close() 
 
 	def write_coefs(self):
-		cdef double nm
 		for l in range(self.n_layers):
-			nm = -1E10
-			name = "Data/layer" + str(l + 1) +".coefs"
+			name = "Data/layer" + str(l + 1) +".coefs" 
 			f = open(name, "w")
 			for n in range(self.layers[l+1]):
-				for c in range(self.layers[l]+1):
-					if self.coefs[l][n][c] > nm:
-						nm = self.coefs[l][n][c]
-			f.write("%.40f\n" % nm)
-			for n in range(self.layers[l+1]):
 				for c in range(self.layers[l]+1):   
-					f.write("%.40f\n" % (self.coefs[l][n][c] / nm * 100))
+					f.write("%.40f\n" % self.coefs[l][n][c])
 			f.close() 
 
 	cdef double* answer(self, float* state):

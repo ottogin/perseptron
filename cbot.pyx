@@ -1,12 +1,14 @@
 import interface as bbox
 cimport interface as bbox
 import numpy as np
-import random
+import time
+import sys
 from libc.math cimport fabs
-
+import os.path 
 import neuronweb
 cimport neuronweb
-
+from decimal import *
+import random as rand
 cdef neuronweb.neuronweb nw
 cdef int n_features = 36, n_actions = 4
 cdef int n_hidden = (n_features - n_actions) / 2, n_layers = 2
@@ -53,7 +55,7 @@ def prepare_bbox(name):
 	if bbox.is_level_loaded() and last_level == name:
 		bbox.reset_level()
 	else:
-		bbox.load_level(name, verbose = 1)
+		bbox.load_level(name, verbose = 0)
 		n_features = bbox.get_num_of_features()
 		n_actions = bbox.get_num_of_actions()
 		n_hidden = (n_features - n_actions) / 2
@@ -70,6 +72,51 @@ def run_level(name):
 		has_next = bbox.c_do_action(action)
 	bbox.finish(verbose = 0)
 	return bbox.get_score()
+
+def sim_salabim():
+	coefs = []
+	for l in range(2):
+		name = "Data/layer" + str(l + 1)+".coefs"
+		if os.path.isfile(name): 
+			f = open(name, "r")
+			for line in f.readlines():
+				val = Decimal(line)
+				if rand.random() > 0.995:
+					if rand.random() > 0.01:
+						coefs.append(- val * Decimal(rand.random()) * 2)
+					else:
+						coefs.append(  val * Decimal(rand.random()) * 2)
+				else:
+					coefs.append(val)
+			f.close()
+			f = open(name + '_magical', "w")
+			for c in coefs:
+				f.write("%.40f\n" % c)
+			f.close()
+		coefs = []
+
+def random():
+	global nw
+	nw = neuronweb.neuronweb(n_layers, [n_hidden, n_actions], n_features)
+	nw.read_coefs();
+	best_s = run_level("levels/train_level.data") * run_level("levels/test_level.data")
+	i = 0
+	while(True):
+		i = i + 1
+		sim_salabim()
+		nw.read_coefs("_magical")
+		train = run_level("levels/train_level.data")
+		test = run_level("levels/test_level.data")
+		cur_s = train * test
+		if cur_s > best_s and train > 0:
+			best_s = cur_s
+			nw.write_coefs()
+			sys.stdout.write(" [%d]Train: %f   Test: %f\n" % (i, train, test))
+			sys.stdout.flush()
+		else:
+			sys.stdout.write(" [%d]Train: %f   Test: %f\r" % (i, train, test))
+			sys.stdout.flush()
+	nw.destroy()
  
 def run():
 	global nw
